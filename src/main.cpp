@@ -24,7 +24,6 @@ int main(int argc, const char *argv[]) {
     std::cout << "\ninserting 1000 rows...";
 
     if (rand() % 10 < 2) {
-      // WRONG, IT'S COMMITTING SUCCESSFULLY, EVEN THOUGH WE HAVE A SQL ERROR: column "dummy" of relation "my_test" does not exist
       std::string add_999 = "INSERT INTO my_test (my_num, dummy) VALUES (999, 'dummy str')"; // DOES NOT THROW ANYTHING!
       std::cout << "\ninserting poisoned data: " << add_999;
       pipeline.insert(add_999);
@@ -34,6 +33,7 @@ int main(int argc, const char *argv[]) {
     std::cout << "\n... Pipeline completed.";
 
     auto start = std::chrono::steady_clock::now();
+    // the pipeline will throw an exception now! :)
     while (!pipeline.empty()) pipeline.retrieve();
     auto end = std::chrono::steady_clock::now();
     std::cout << "\n+++ Pipeline cleaned in "
