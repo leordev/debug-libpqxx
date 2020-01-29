@@ -1,4 +1,7 @@
+#include <stdlib.h>
 #include <iostream>
+#include <chrono>
+#include <unistd.h>
 #include <pqxx/pqxx>
 
 int main(int argc, const char *argv[]) {
@@ -6,30 +9,47 @@ int main(int argc, const char *argv[]) {
   pqxx::connection sql_connection{};
   std::cout << "connected!\n";
 
-  std::cout << ">>> starting sql transaction...";
-  pqxx::work trx(sql_connection);
-  pqxx::pipeline pipeline(trx);
+  while (true) {
+    std::cout << "\n>>> starting sql transaction...";
+    pqxx::work trx(sql_connection);
+    pqxx::pipeline pipeline(trx);
 
-  std::string create_table = "CREATE TABLE IF NOT EXISTS my_test (my_num int NOT NULL)";
-  std::cout << "\n    " << create_table;
-  pipeline.insert(create_table);
+    std::string create_table = "CREATE TABLE IF NOT EXISTS my_test (my_num int NOT NULL)";
+    pipeline.insert(create_table);
 
-  std::string add_123 = "INSERT INTO my_test (my_num) VALUES (123)";
-  std::cout << "\n    " << add_123;
-  pipeline.insert(add_123);
+    for (int i = 0; i < 10000; i++) {
+      std::string add_123 = "INSERT INTO my_test (my_num) VALUES (123)";
+      pipeline.insert(add_123);
+    }
+    std::cout << "\ninserting 1000 rows...";
 
-  // WRONG, IT'S COMMITTING SUCCESSFULLY, EVEN THOUGH WE HAVE A SQL ERROR: column "dummy" of relation "my_test" does not exist
-  std::string add_999 = "INSERT INTO my_test (my_num, dummy) VALUES (999, 'dummy str')"; // DOES NOT THROW ANYTHING!
-  std::cout << "\n    " << add_999;
-  pipeline.insert(add_999);
+    if (rand() % 10 < 2) {
+      // WRONG, IT'S COMMITTING SUCCESSFULLY, EVEN THOUGH WE HAVE A SQL ERROR: column "dummy" of relation "my_test" does not exist
+      std::string add_999 = "INSERT INTO my_test (my_num, dummy) VALUES (999, 'dummy str')"; // DOES NOT THROW ANYTHING!
+      std::cout << "\ninserting poisoned data: " << add_999;
+      pipeline.insert(add_999);
+    }
 
-  // PS: if I do something like below, it throws CORRECTLY
-  // libc++abi.dylib: terminating with uncaught exception of type pqxx::usage_error: Attempt to commit previously aborted transaction<READ COMMITTED>
-  // std::string add_999 = "INSERT aaaa";
+    pipeline.complete();
+    std::cout << "\n... Pipeline completed.";
 
-  pipeline.complete();
-  trx.commit();
-  std::cout << "\n<<< Transaction Committed Successfully!";
+    auto start = std::chrono::steady_clock::now();
+    while (!pipeline.empty()) pipeline.retrieve();
+    auto end = std::chrono::steady_clock::now();
+    std::cout << "\n+++ Pipeline cleaned in "
+      << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
+      << " ms";
+
+    start = std::chrono::steady_clock::now();
+    trx.commit();
+    end = std::chrono::steady_clock::now();
+    std::cout << "\n=== Transaction committed in "
+      << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
+      << " ms";
+    std::cout << "\n\n";
+
+    sleep(2);
+  }
 
   return 0;
 }
