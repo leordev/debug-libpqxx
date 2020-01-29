@@ -63,40 +63,24 @@ divider::build() {
   run "cd ${ProjectRoot}"
 }
 
-divider::tests() {
-  if [[ -f bin/divider_tests ]]; then
-    run::set-next show-output-on
-    run "echo && bin/divider_tests"
-  else
-    printf "${bldred}Can't find installed executable ${bldylw}bin/divider_tests.${clr}\n"
-    exit 2
-  fi
-}
-
-divider::examples() {
+divider::run() {
   [[ ! -f bin/divider ]] && {
-    error "You don't have the cmpiled binary yet".
+    error "You don't have the compiled binary yet".
     exit 3
   }
 
   run::set-all show-output-on
 
   hr
-  run "bin/divider 11 7"
+  run "bin/divider"
   hr
-  run "bin/divider 1298798375 94759897"
-  hr
-  run "bin/divider 78 17"
-  hr
-
 }
 
 main() {
   divider::header
   divider::setup
   divider::build
-  divider::tests
-  divider::examples
+  divider::run
 }
 
 (( $_s_ )) || main
