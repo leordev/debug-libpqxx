@@ -2,7 +2,19 @@ cmake_minimum_required(VERSION 3.2)
 
 project(cmake-project-template)
 
-set(CMAKE_CXX_STANDARD 11)
+find_package(PostgreSQL COMPONENTS Libraries)
+
+if (PostgreSQL_INCLUDE_DIR)
+  set(SKIP_PQXX_SHARED ON)
+  set(SKIP_BUILD_TEST ON)
+  add_subdirectory(external/libpqxx EXCLUDE_FROM_ALL)
+  set(PQXX_LIBRARIES pqxx_static)
+else()
+  set(PQXX_LIBRARIES "")
+endif()
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3")
 
 set(CMAKE_INSTALL_PREFIX ${PROJECT_SOURCE_DIR})
